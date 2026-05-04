@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UltraERC721 — Contract Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:     #030608;
+    --bg2:    #07100f;
+    --panel:  #060d0c;
+    --line:   rgba(0,229,200,.08);
+    --cyan:   #00e8c8;
+    --green:  #00ff88;
+    --yellow: #ffd166;
+    --red:    #ff4d6d;
+    --blue:   #7eb8f7;
+    --purple: #c4a4ff;
+    --text:   #b8d8d2;
+    --muted:  #3d5c56;
+    --mono:   'JetBrains Mono', monospace;
+    --head:   'Orbitron', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-weight: 400;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,232,200,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,232,200,.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    position: relative; z-index: 10;
+    height: 48px;
+    background: rgba(3,6,8,.95);
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center;
+    padding: 0 1.5rem;
+    gap: 1.5rem;
+    flex-shrink: 0;
+  }
+  .topbar-logo {
+    font-family: var(--head);
+    font-size: .72rem;
+    letter-spacing: .18em;
+    color: var(--cyan);
+    text-shadow: 0 0 16px rgba(0,232,200,.5);
+  }
+  .topbar-logo span { color: var(--green); }
+  .topbar-sep { width: 1px; height: 20px; background: var(--line); }
+  .topbar-title {
+    font-size: .72rem;
+    letter-spacing: .14em;
+    color: var(--muted);
+  }
+  .topbar-right { margin-left: auto; display: flex; gap: .75rem; align-items: center; }
+  .btn-copy {
+    display: flex; align-items: center; gap: .5rem;
+    background: var(--cyan);
+    color: var(--bg);
+    border: none;
+    padding: .4rem 1.1rem;
+    font-family: var(--mono);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    cursor: pointer;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .btn-copy:hover { background: var(--green); box-shadow: 0 0 16px rgba(0,255,136,.35); }
+  .btn-copy.copied { background: var(--green); }
+  .btn-copy .icon { font-size: .9rem; }
+  .btn-home {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    padding: .38rem .9rem;
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    cursor: pointer;
+    transition: all .2s;
+    text-decoration: none;
+  }
+  .btn-home:hover { color: var(--cyan); border-color: rgba(0,232,200,.3); }
+
+  /* ── MAIN LAYOUT ── */
+  .workspace {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    overflow: hidden;
+    position: relative; z-index: 1;
+  }
+
+  /* ── LEFT PANEL ── */
+  .config-panel {
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted) transparent;
+  }
+  .config-panel::-webkit-scrollbar { width: 4px; }
+  .config-panel::-webkit-scrollbar-thumb { background: var(--muted); }
+
+  .section-header {
+    padding: .65rem 1.2rem;
+    background: rgba(0,232,200,.04);
+    border-bottom: 1px solid var(--line);
+    font-size: .65rem;
+    letter-spacing: .18em;
+    color: var(--cyan);
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .section-header::before { content: '//'; color: var(--muted); }
+
+  .field-group { padding: .9rem 1.2rem; border-bottom: 1px solid rgba(0,232,200,.04); }
+  .field-label {
+    font-size: .65rem;
+    letter-spacing: .12em;
+    color: var(--muted);
+    margin-bottom: .45rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .field-label .required { color: var(--red); }
+  .field-input {
+    width: 100%;
+    background: rgba(0,232,200,.04);
+    border: 1px solid rgba(0,232,200,.1);
+    color: var(--text);
+    padding: .5rem .7rem;
+    font-family: var(--mono);
+    font-size: .8rem;
+    outline: none;
+    transition: border-color .2s;
+    appearance: none;
+  }
+  .field-input:focus { border-color: rgba(0,232,200,.4); background: rgba(0,232,200,.06); }
+  .field-input::placeholder { color: var(--muted); opacity: .5; }
+  .field-input.error { border-color: var(--red); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+  .field-hint { font-size: .62rem; color: var(--muted); margin-top: .3rem; letter-spacing: .05em; }
+
+  /* TOGGLE */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .7rem 1.2rem;
+    border-bottom: 1px solid rgba(0,232,200,.04);
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .toggle-row:hover { background: rgba(0,232,200,.03); }
+  .toggle-info { flex: 1; }
+  .toggle-name { font-size: .78rem; color: var(--text); }
+  .toggle-desc { font-size: .62rem; color: var(--muted); margin-top: .15rem; }
+  .toggle {
+    width: 36px; height: 20px;
+    background: rgba(0,232,200,.1);
+    border: 1px solid rgba(0,232,200,.15);
+    border-radius: 0;
+    position: relative;
+    flex-shrink: 0;
+    transition: background .2s, border-color .2s;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    background: var(--muted);
+    top: 3px; left: 3px;
+    transition: transform .2s, background .2s;
+  }
+  .toggle.on { background: rgba(0,232,200,.2); border-color: rgba(0,232,200,.4); }
+  .toggle.on::after { transform: translateX(16px); background: var(--cyan); box-shadow: 0 0 8px rgba(0,232,200,.5); }
+
+  /* SUB-SECTION (shown/hidden based on toggle) */
+  .sub-section {
+    background: rgba(0,0,0,.2);
+    border-left: 2px solid rgba(0,232,200,.15);
+    margin: 0;
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .3s ease, padding .3s ease;
+  }
+  .sub-section.open { max-height: 600px; padding: .2rem 0; }
+
+  /* SEGMENT CONTROL */
+  .seg-ctrl { display: flex; gap: 0; }
+  .seg-btn {
+    flex: 1;
+    background: rgba(0,232,200,.04);
+    border: 1px solid rgba(0,232,200,.1);
+    color: var(--muted);
+    padding: .45rem;
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .08em;
+    cursor: pointer;
+    text-align: center;
+    transition: all .2s;
+    margin-right: -1px;
+  }
+  .seg-btn.active {
+    background: rgba(0,232,200,.12);
+    border-color: rgba(0,232,200,.4);
+    color: var(--cyan);
+    z-index: 1;
+  }
+
+  /* ── RIGHT PANEL (CODE OUTPUT) ── */
+  .code-panel {
+    display: flex; flex-direction: column;
+    background: var(--bg2);
+    overflow: hidden;
+  }
+  .code-header {
+    height: 36px;
+    background: rgba(0,0,0,.3);
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center;
+    padding: 0 1.2rem;
+    gap: .6rem;
+    flex-shrink: 0;
+  }
+  .code-filename {
+    font-size: .72rem;
+    letter-spacing: .1em;
+    color: var(--cyan);
+  }
+  .code-badge {
+    font-size: .6rem;
+    letter-spacing: .12em;
+    padding: .15rem .5rem;
+    border: 1px solid rgba(0,232,200,.2);
+    color: var(--muted);
+  }
+  .code-lines-wrap {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted) transparent;
+    display: flex;
+  }
+  .line-numbers {
+    padding: 1.2rem .8rem 1.2rem .6rem;
+    text-align: right;
+    color: rgba(61,92,86,.5);
+    font-size: .76rem;
+    line-height: 1.75;
+    user-select: none;
+    border-right: 1px solid rgba(0,232,200,.04);
+    background: rgba(0,0,0,.15);
+    flex-shrink: 0;
+    min-width: 44px;
+  }
+  .code-content {
+    flex: 1;
+    padding: 1.2rem 1.4rem;
+    font-size: .76rem;
+    line-height: 1.75;
+    white-space: pre;
+    color: var(--text);
+  }
+
+  /* SYNTAX HIGHLIGHT */
+  .kw  { color: #7eb8f7; }
+  .fn  { color: #00e8c8; }
+  .str { color: #00ff88; }
+  .cm  { color: #3d5c56; font-style: italic; }
+  .num { color: #ffd166; }
+  .tp  { color: #c4a4ff; }
+  .err { color: #ff4d6d; }
+  .hl-line { background: rgba(0,232,200,.05); display: block; }
+
+  /* STATUSBAR */
+  .statusbar {
+    height: 24px;
+    background: rgba(0,232,200,.06);
+    border-top: 1px solid var(--line);
+    display: flex; align-items: center;
+    padding: 0 1.2rem;
+    gap: 1.5rem;
+    flex-shrink: 0;
+  }
+  .status-item { font-size: .62rem; letter-spacing: .1em; color: var(--muted); }
+  .status-item span { color: var(--cyan); }
+  .status-dot { width: 5px; height: 5px; background: var(--green); border-radius: 50%; box-shadow: 0 0 6px var(--green); }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 2rem; right: 2rem;
+    background: var(--green);
+    color: var(--bg);
+    padding: .6rem 1.4rem;
+    font-family: var(--mono);
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    z-index: 1000;
+    transform: translateY(20px); opacity: 0;
+    transition: all .25s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">ULTRA<span>ERC</span>721</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-title">CONTRACT BUILDER</div>
+  <div class="topbar-right">
+    <a href="landing.html" class="btn-home">← LANDING</a>
+    <button class="btn-copy" id="copyBtn" onclick="copyCode()">
+      <span class="icon">⎘</span> COPY CODE
+    </button>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- LEFT: CONFIG -->
+  <div class="config-panel">
+
+    <!-- COLLECTION -->
+    <div class="section-header">COLLECTION</div>
+    <div class="field-group">
+      <div class="field-row">
+        <div>
+          <div class="field-label">CONTRACT NAME <span class="required">*</span></div>
+          <input class="field-input" id="contractName" value="MyNFT" oninput="update()" placeholder="MyNFT">
+        </div>
+        <div>
+          <div class="field-label">SYMBOL <span class="required">*</span></div>
+          <input class="field-input" id="symbol" value="MNFT" oninput="update()" placeholder="MNFT">
+        </div>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-label">TOKEN NAME (Display Name)</div>
+      <input class="field-input" id="tokenName" value="My NFT Collection" oninput="update()" placeholder="My NFT Collection">
+    </div>
+    <div class="field-group">
+      <div class="field-row">
+        <div>
+          <div class="field-label">MAX SUPPLY</div>
+          <input class="field-input" id="maxSupply" type="number" value="10000" oninput="update()" min="1">
+        </div>
+        <div>
+          <div class="field-label">MINT PRICE (ETH)</div>
+          <input class="field-input" id="mintPrice" value="0.05" oninput="update()" placeholder="0.05">
+        </div>
+      </div>
+    </div>
+
+    <!-- METADATA -->
+    <div class="section-header">METADATA</div>
+    <div class="field-group">
+      <div class="field-label">TYPE</div>
+      <div class="seg-ctrl">
+        <button class="seg-btn active" id="seg-ipfs" onclick="setMetaType('ipfs')">IPFS</button>
+        <button class="seg-btn" id="seg-url"  onclick="setMetaType('url')">BASE URL</button>
+      </div>
+    </div>
+    <div class="field-group" id="ipfs-field">
+      <div class="field-label">IPFS CID</div>
+      <input class="field-input" id="ipfsCid" value="QmYourCIDHere" oninput="update()" placeholder="QmYourCIDHere...">
+      <div class="field-hint">Generated as ipfs://{CID}/{tokenId}.json</div>
+    </div>
+    <div class="field-group" id="url-field" style="display:none">
+      <div class="field-label">BASE URL</div>
+      <input class="field-input" id="baseUrl" value="https://api.example.com/metadata/" oninput="update()">
+      <div class="field-hint">Generated as {baseUrl}{tokenId}.json</div>
+    </div>
+
+    <!-- REVEAL -->
+    <div class="toggle-row" onclick="toggleFeature('reveal')">
+      <div class="toggle-info">
+        <div class="toggle-name">Reveal Mechanism</div>
+        <div class="toggle-desc">Show placeholder before mint, then reveal</div>
+      </div>
+      <div class="toggle" id="toggle-reveal"></div>
+    </div>
+    <div class="sub-section" id="sub-reveal">
+      <div class="field-group">
+        <div class="field-label">PLACEHOLDER URI</div>
+        <input class="field-input" id="placeholderUri" value="ipfs://QmPlaceholder/hidden.json" oninput="update()">
+        <div class="field-hint">All tokens return this URI before reveal</div>
+      </div>
+    </div>
+
+    <!-- ROYALTY -->
+    <div class="section-header">ROYALTY</div>
+    <div class="toggle-row" onclick="toggleFeature('royalty')">
+      <div class="toggle-info">
+        <div class="toggle-name">EIP-2981 Royalty</div>
+        <div class="toggle-desc">Compatible with marketplaces like OpenSea, Blur, etc.</div>
+      </div>
+      <div class="toggle" id="toggle-royalty"></div>
+    </div>
+    <div class="sub-section" id="sub-royalty">
+      <div class="field-group">
+        <div class="field-row">
+          <div>
+            <div class="field-label">RATE (%)</div>
+            <input class="field-input" id="royaltyPct" type="number" value="5" min="0" max="20" oninput="update()">
+            <div class="field-hint">Max 20% recommended</div>
+          </div>
+          <div>
+            <div class="field-label">BASIS POINTS</div>
+            <input class="field-input" id="royaltyBps" readonly style="opacity:.5" value="500">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">ROYALTY RECEIVER ADDRESS</div>
+        <input class="field-input" id="royaltyReceiver" value="0x0000000000000000000000000000000000000000" oninput="update()">
+        <div class="field-hint">Can also be passed as a parameter to the constructor</div>
+      </div>
+    </div>
+
+    <!-- MINT -->
+    <div class="section-header">MINT SETTINGS</div>
+    <div class="field-group">
+      <div class="field-label">MINT TYPE</div>
+      <div class="seg-ctrl">
+        <button class="seg-btn active" id="seg-public"    onclick="setMintType('public')">PUBLIC</button>
+        <button class="seg-btn"        id="seg-allowlist" onclick="setMintType('allowlist')">ALLOWLIST</button>
+        <button class="seg-btn"        id="seg-owner"     onclick="setMintType('owner')">OWNER ONLY</button>
+      </div>
+      <div class="field-hint" id="mint-type-hint" style="margin-top:.5rem">Anyone can mint, price check is enforced</div>
+    </div>
+    <div class="field-group">
+      <div class="field-label">MAX MINT PER WALLET</div>
+      <input class="field-input" id="maxPerWallet" type="number" value="0" oninput="update()" min="0">
+      <div class="field-hint">0 = unlimited</div>
+    </div>
+
+    <!-- EXTRA -->
+    <div class="section-header">EXTRA FEATURES</div>
+    <div class="toggle-row" onclick="toggleFeature('pause')">
+      <div class="toggle-info">
+        <div class="toggle-name">Pause Mechanism</div>
+        <div class="toggle-desc">Owner can pause / unpause minting</div>
+      </div>
+      <div class="toggle" id="toggle-pause"></div>
+    </div>
+    <div class="toggle-row" onclick="toggleFeature('burn')">
+      <div class="toggle-info">
+        <div class="toggle-name">Burn Support</div>
+        <div class="toggle-desc">Token owners can burn their own tokens</div>
+      </div>
+      <div class="toggle" id="toggle-burn"></div>
+    </div>
+    <div class="toggle-row" onclick="toggleFeature('enumerable')">
+      <div class="toggle-info">
+        <div class="toggle-name">tokensOfOwner()</div>
+        <div class="toggle-desc">List all token IDs belonging to an address</div>
+      </div>
+      <div class="toggle" id="toggle-enumerable"></div>
+    </div>
+
+    <div style="padding:1rem 1.2rem">
+      <div style="font-size:.62rem;color:var(--muted);line-height:1.6;letter-spacing:.05em">
+        ⚠ The generated code is a starting point. Get it audited before using in production.
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: CODE OUTPUT -->
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-filename" id="code-filename">MyNFT.sol</div>
+      <div class="code-badge">SOLIDITY 0.8.24</div>
+      <div class="code-badge" id="code-badge-royalty" style="display:none;border-color:rgba(0,255,136,.25);color:var(--green)">EIP-2981</div>
+      <div class="code-badge" id="code-badge-allowlist" style="display:none;border-color:rgba(255,209,102,.25);color:var(--yellow)">MERKLE</div>
+    </div>
+    <div class="code-lines-wrap">
+      <div class="line-numbers" id="line-numbers"></div>
+      <div class="code-content" id="code-output"></div>
+    </div>
+    <div class="statusbar">
+      <div class="status-dot"></div>
+      <div class="status-item">LINES: <span id="stat-lines">0</span></div>
+      <div class="status-item">SIZE: <span id="stat-size">0 B</span></div>
+      <div class="status-item">IMPORTS: <span id="stat-imports">0</span></div>
+      <div class="status-item" id="stat-features">FEATURES: <span>–</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ COPIED!</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+const state = {
+  metaType: 'ipfs',
+  mintType: 'public',
+  features: { reveal: false, royalty: false, pause: false, burn: false, enumerable: false }
+};
+
+// ── TOGGLES ────────────────────────────────────────────────────────────────
+function toggleFeature(key) {
+  state.features[key] = !state.features[key];
+  const el = document.getElementById('toggle-' + key);
+  el.classList.toggle('on', state.features[key]);
+  const sub = document.getElementById('sub-' + key);
+  if (sub) sub.classList.toggle('open', state.features[key]);
+  update();
+}
+function setMetaType(t) {
+  state.metaType = t;
+  document.getElementById('seg-ipfs').classList.toggle('active', t === 'ipfs');
+  document.getElementById('seg-url').classList.toggle('active', t === 'url');
+  document.getElementById('ipfs-field').style.display = t === 'ipfs' ? '' : 'none';
+  document.getElementById('url-field').style.display = t === 'url' ? '' : 'none';
+  update();
+}
+function setMintType(t) {
+  state.mintType = t;
+  ['public','allowlist','owner'].forEach(m => document.getElementById('seg-'+m).classList.toggle('active', m === t));
+  const hints = { public:'Anyone can mint, price check is enforced', allowlist:'Whitelist with Merkle proof', owner:'Only owner can mint (airdrop)' };
+  document.getElementById('mint-type-hint').textContent = hints[t];
+  update();
+}
+
+// ── CODE GENERATOR ─────────────────────────────────────────────────────────
+function gv(id) { return document.getElementById(id)?.value?.trim() ?? ''; }
+
+function generateCode() {
+  const contractName   = gv('contractName') || 'MyNFT';
+  const tokenName      = gv('tokenName') || 'My NFT Collection';
+  const symbol         = gv('symbol') || 'MNFT';
+  const maxSupply      = parseInt(gv('maxSupply')) || 10000;
+  const mintPrice      = gv('mintPrice') || '0.05';
+  const maxPerWallet   = parseInt(gv('maxPerWallet')) || 0;
+  const ipfsCid        = gv('ipfsCid') || 'QmYourCIDHere';
+  const baseUrl        = gv('baseUrl') || 'https://api.example.com/metadata/';
+  const placeholder    = gv('placeholderUri') || 'ipfs://QmPlaceholder/hidden.json';
+  const royaltyPct     = parseFloat(gv('royaltyPct')) || 5;
+  const royaltyBps     = Math.round(royaltyPct * 100);
+  const royaltyReceiver= gv('royaltyReceiver') || '0x0000000000000000000000000000000000000000';
+
+  // update BPS display
+  document.getElementById('royaltyBps').value = royaltyBps;
+
+  const { reveal, royalty, pause, burn, enumerable } = state.features;
+  const { metaType, mintType } = state;
+
+  // update badges
+  document.getElementById('code-filename').textContent = contractName + '.sol';
+  document.getElementById('code-badge-royalty').style.display = royalty ? '' : 'none';
+  document.getElementById('code-badge-allowlist').style.display = mintType === 'allowlist' ? '' : 'none';
+
+  const baseURI = metaType === 'ipfs' ? `ipfs://${ipfsCid}/` : baseUrl;
+
+  // Build imports
+  let imports = [
+    `import "./UltraERC721.sol";`,
+    `import "@openzeppelin/contracts/access/Ownable.sol";`,
+    `import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";`,
+  ];
+  if (royalty)              imports.push(`import "@openzeppelin/contracts/interfaces/IERC2981.sol";`);
+  if (mintType==='allowlist') imports.push(`import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";`);
+
+  // Build inherits
+  let inherits = ['UltraERC721', 'Ownable', 'ReentrancyGuard'];
+  if (royalty) inherits.push('IERC2981');
+
+  // Build errors
+  let errors = [
+    `    error MaxSupplyExceeded();`,
+    `    error InsufficientPayment();`,
+  ];
+  if (pause)              errors.push(`    error ContractPaused();`);
+  if (mintType==='allowlist') { errors.push(`    error NotAllowlisted();`); errors.push(`    error AlreadyMinted();`); }
+
+  // Build state vars
+  let vars = [
+    `    uint256 public constant MAX_SUPPLY  = ${maxSupply.toLocaleString('en')};`,
+    `    uint256 public constant MINT_PRICE  = ${mintPrice} ether;`,
+  ];
+  if (royalty) { vars.push(`    uint96  public constant ROYALTY_BPS = ${royaltyBps}; // %${royaltyPct}`); vars.push(`    address private _royaltyReceiver;`); }
+  if (maxPerWallet > 0) vars.push(`    uint256 public constant MAX_PER_WALLET = ${maxPerWallet};`);
+  if (pause) vars.push(`    bool public paused;`);
+  if (reveal) { vars.push(`    bool public revealed;`); vars.push(`    string private _placeholderURI;`); }
+  if (mintType==='allowlist') { vars.push(`    bytes32 public merkleRoot;`); vars.push(`    mapping(address => bool) private _allowlistMinted;`); }
+  if (maxPerWallet > 0 && mintType !== 'allowlist') vars.push(`    mapping(address => uint256) private _mintedCount;`);
+  vars.push(`    string private _baseTokenURI;`);
+
+  // Build constructor params
+  let ctorParams = [];
+  let ctorBody = [];
+  if (metaType === 'ipfs') {
+    ctorParams.push(`string memory cid`);
+    ctorBody.push(`        _baseTokenURI = string(abi.encodePacked("ipfs://", cid, "/"));`);
+  } else {
+    ctorParams.push(`string memory baseURI`);
+    ctorBody.push(`        _baseTokenURI = baseURI;`);
+  }
+  if (reveal) { ctorParams.push(`string memory placeholderURI`); ctorBody.push(`        _placeholderURI = placeholderURI;`); }
+  if (royalty) {
+    if (royaltyReceiver === '0x0000000000000000000000000000000000000000') {
+      ctorBody.push(`        _royaltyReceiver = msg.sender; // royaltyReceiver parameter can also be added`);
+    } else {
+      ctorBody.push(`        _royaltyReceiver = ${royaltyReceiver};`);
+    }
+  }
+
+  // Build mint function
+  let mintFn = '';
+  if (mintType === 'public') {
+    mintFn = `
+    // ── PUBLIC MINT ──────────────────────────────────────────────────────
+    function mint(uint256 quantity) external payable nonReentrant {${pause ? `
+        if (paused) revert ContractPaused();` : ''}
+        if (totalSupply + quantity > MAX_SUPPLY) revert MaxSupplyExceeded();
+        if (msg.value < MINT_PRICE * quantity) revert InsufficientPayment();${maxPerWallet > 0 ? `
+        if (_mintedCount[msg.sender] + quantity > MAX_PER_WALLET) revert MaxPerWalletExceeded();
+        _mintedCount[msg.sender] += quantity;` : ''}
+        _safeMint(msg.sender, quantity);
+    }`;
+  } else if (mintType === 'allowlist') {
+    mintFn = `
+    // ── ALLOWLIST MINT (Merkle Proof) ────────────────────────────────────
+    function allowlistMint(
+        uint256 quantity,
+        bytes32[] calldata proof
+    ) external payable nonReentrant {${pause ? `
+        if (paused) revert ContractPaused();` : ''}
+        if (_allowlistMinted[msg.sender]) revert AlreadyMinted();
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+        if (!MerkleProof.verify(proof, merkleRoot, leaf)) revert NotAllowlisted();
+        if (totalSupply + quantity > MAX_SUPPLY) revert MaxSupplyExceeded();
+        if (msg.value < MINT_PRICE * quantity) revert InsufficientPayment();
+        _allowlistMinted[msg.sender] = true;
+        _safeMint(msg.sender, quantity);
+    }
+
+    function setMerkleRoot(bytes32 root) external onlyOwner {
+        merkleRoot = root;
+    }`;
+  } else {
+    mintFn = `
+    // ── OWNER MINT (Airdrop) ─────────────────────────────────────────────
+    function ownerMint(address to, uint256 quantity) external onlyOwner {
+        if (totalSupply + quantity > MAX_SUPPLY) revert MaxSupplyExceeded();
+        _safeMint(to, quantity);
+    }`;
+  }
+
+  // tokenURI
+  let tokenUriFn = `
+    // ── METADATA ─────────────────────────────────────────────────────────
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        if (tokenId >= totalSupply) revert OwnerQueryForNonexistentToken();${reveal ? `
+        if (!revealed) return _placeholderURI;` : ''}
+        return string(abi.encodePacked(_baseTokenURI, _toString(tokenId), ".json"));
+    }
+
+    function setBaseURI(string memory uri) external onlyOwner {
+        _baseTokenURI = uri;
+    }`;
+  if (reveal) {
+    tokenUriFn += `
+
+    function reveal(string memory finalURI) external onlyOwner {
+        revealed = true;
+        _baseTokenURI = finalURI;
+    }`;
+  }
+
+  // royaltyInfo
+  let royaltyFn = '';
+  if (royalty) {
+    royaltyFn = `
+
+    // ── EIP-2981 ROYALTY ──────────────────────────────────────────────────
+    function royaltyInfo(
+        uint256 /*tokenId*/,
+        uint256 salePrice
+    ) external view override returns (address receiver, uint256 amount) {
+        return (_royaltyReceiver, (salePrice * ROYALTY_BPS) / 10_000);
+    }
+
+    function setRoyaltyReceiver(address receiver) external onlyOwner {
+        _royaltyReceiver = receiver;
+    }`;
+  }
+
+  // supportsInterface
+  let supportsFn = royalty
+    ? `\n    function supportsInterface(bytes4 interfaceId) public view override(UltraERC721, IERC165) returns (bool) {
+        return interfaceId == 0x2a55205a || // EIP-2981
+               super.supportsInterface(interfaceId);
+    }`
+    : '';
+
+  // burn
+  let burnFn = burn ? `
+    // ── BURN ─────────────────────────────────────────────────────────────
+    function burn(uint256 tokenId) external {
+        if (ownerOf(tokenId) != msg.sender) revert NotOwnerOrApproved();
+        // Note: totalSupply does not decrease after burn (ERC721A compatibility)
+        // Keep a separate _burnedCount for actual burn
+        _owners[tokenId] = address(0xdead);
+        unchecked { _balances[msg.sender] -= 1; }
+        emit Transfer(msg.sender, address(0), tokenId);
+    }` : '';
+
+  // enumerable
+  let enumFn = enumerable ? `
+    // ── TOKENS OF OWNER ───────────────────────────────────────────────────
+    function tokensOfOwner(address owner) external view returns (uint256[] memory) {
+        uint256 bal = balanceOf(owner);
+        uint256[] memory result = new uint256[](bal);
+        uint256 idx;
+        for (uint256 i = 0; i < totalSupply && idx < bal; i++) {
+            if (ownerOf(i) == owner) result[idx++] = i;
+        }
+        return result;
+    }` : '';
+
+  // pause toggle
+  let pauseFn = pause ? `
+    function setPaused(bool _paused) external onlyOwner {
+        paused = _paused;
+    }` : '';
+
+  // extra errors
+  let extraErrors = '';
+  if (maxPerWallet > 0 && mintType !== 'allowlist') extraErrors = `    error MaxPerWalletExceeded();\n`;
+
+  // _toString
+  const toStringFn = `
+    // ── UTILS ─────────────────────────────────────────────────────────────
+    function _toString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) return "0";
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) { digits++; temp /= 10; }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }`;
+
+  const featureList = [
+    royalty && 'EIP-2981',
+    mintType === 'allowlist' && 'Merkle',
+    reveal && 'Reveal',
+    pause && 'Pause',
+    burn && 'Burn',
+    enumerable && 'Enumerable',
+  ].filter(Boolean).join(', ') || '–';
+
+  document.getElementById('stat-features').innerHTML = `FEATURES: <span>${featureList}</span>`;
+
+  const code = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+${imports.join('\n')}
+
+/// @title ${contractName}
+/// @notice "${tokenName}" NFT Collection
+/// @dev Built on UltraERC721 — ERC721A × Bitmap, ~256x faster ownerOf
+contract ${contractName} is ${inherits.join(', ')} {
+
+    // ── CONSTANTS & STATE ─────────────────────────────────────────────────
+${vars.join('\n')}
+
+    // ── CUSTOM ERRORS ─────────────────────────────────────────────────────
+${extraErrors}${errors.join('\n')}
+
+    // ── CONSTRUCTOR ───────────────────────────────────────────────────────
+    constructor(${ctorParams.join(', ')})
+        UltraERC721("${tokenName}", "${symbol}")
+        Ownable(msg.sender)
+    {
+${ctorBody.join('\n')}
+    }
+${mintFn}
+${tokenUriFn}${royaltyFn}${burnFn}${enumFn}
+    // ── OWNER CONTROLS ────────────────────────────────────────────────────${pauseFn}
+
+    function withdraw() external onlyOwner {
+        (bool ok,) = owner().call{value: address(this).balance}("");
+        require(ok, "Transfer failed");
+    }${supportsFn}
+${toStringFn}
+}`;
+
+  return code;
+}
+
+// ── SYNTAX HIGHLIGHT ───────────────────────────────────────────────────────
+function highlight(code) {
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let lines = code.split('\n');
+  return lines.map(line => {
+    let l = esc(line);
+    // Comments first
+    l = l.replace(/(\/\/.*$)/gm, '<span class="cm">$1</span>');
+    if (l.includes('<span class="cm">')) return l;
+    // Strings
+    l = l.replace(/(&quot;[^&]*?&quot;)/g, '<span class="str">$1</span>');
+    // Keywords
+    const kws = ['pragma','solidity','import','contract','abstract','interface','library','is','function','returns','return','event','error','modifier','constructor','mapping','struct','enum','if','else','for','while','do','break','continue','revert','require','emit','delete','new','memory','storage','calldata','public','private','internal','external','view','pure','virtual','override','payable','indexed','unchecked','assembly','try','catch','using','bytes32','bytes','bool','string','address','uint256','uint96','uint8','uint','int256','int','true','false'];
+    kws.forEach(kw => {
+      l = l.replace(new RegExp(`\\b(${kw})\\b`, 'g'), '<span class="kw">$1</span>');
+    });
+    // Numbers
+    l = l.replace(/\b(\d[\d_]*(?:\.\d+)?(?:\s*ether)?)\b/g, '<span class="num">$1</span>');
+    // 0x hex
+    l = l.replace(/\b(0x[0-9a-fA-F]+)\b/g, '<span class="num">$1</span>');
+    // Function names
+    l = l.replace(/([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, (m, name) => {
+      const reserved = ['if','for','while','require','revert','emit','new','mapping','return'];
+      return reserved.includes(name) ? m : `<span class="fn">${name}</span>`;
+    });
+    return l;
+  }).join('\n');
+}
+
+// ── UPDATE ─────────────────────────────────────────────────────────────────
+function update() {
+  const code = generateCode();
+  const lines = code.split('\n');
+  document.getElementById('line-numbers').textContent = lines.map((_,i) => i+1).join('\n');
+  document.getElementById('code-output').innerHTML = highlight(code);
+  document.getElementById('stat-lines').textContent = lines.length;
+  const bytes = new TextEncoder().encode(code).length;
+  document.getElementById('stat-size').textContent = bytes > 1024 ? (bytes/1024).toFixed(1)+' KB' : bytes+' B';
+  const importCount = (code.match(/^import/gm) || []).length;
+  document.getElementById('stat-imports').textContent = importCount;
+}
+
+// ── COPY ───────────────────────────────────────────────────────────────────
+function copyCode() {
+  const code = generateCode();
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = '<span class="icon">✓</span> COPIED';
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span class="icon">⎘</span> COPY CODE';
+      toast.classList.remove('show');
+    }, 2000);
+  });
+}
+
+// Init
+update();
+</script>
+</body>
+</html>
